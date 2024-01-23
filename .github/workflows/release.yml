@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test
+      - run: npm run check
+      - run: npm run build
+  publish:
+    needs:
+      - test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - id: bump-version-and-push
+        name: Bump version and push tag
+        uses: ./
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body: ${{ steps.bump-version-and-push.outputs.changelog }}
+          generate_release_notes: true
+          name: ${{ steps.bump-version-and-push.outputs.new_tag }}
+          tag_name: ${{ steps.bump-version-and-push.outputs.new_tag }}
+          tag_prefix: v
